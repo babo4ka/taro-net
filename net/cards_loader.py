@@ -1,16 +1,10 @@
 import os
-import re
 
 descs_path = "../cards_descs"
 
-general_descs = []
-yn_descs = []
-past_descs = []
-present_descs = []
-future_descs = []
+def load_descs(type):
+    descs = []
 
-
-def load_descs():
     for filename in os.listdir(descs_path):
         with open(("../cards_descs/" + filename), encoding='utf-8') as f:
             lines = [line.rstrip() for line in f]
@@ -19,21 +13,30 @@ def load_descs():
                 if l == "===":
                     lines.remove(l)
 
+
+
             for i, l in enumerate(lines):
                 l = l.replace(',', '')
                 l = l.replace('.', '')
                 l = l.replace('!', '')
                 l = l.replace('?', '')
-                if i == 0 or i == 1:
-                    general_descs.append(l.lower().split(' '))
-                elif i == 2:
-                    yn_descs.append(l.lower().split(' '))
-                elif i == 3 or i == 5:
-                    present_descs.append(l.lower().split(' '))
-                elif i == 4 or i == 6:
-                    past_descs.append(l.lower().split(' '))
-                elif i == 7 or i == 8:
-                    future_descs.append(l.lower().split(' '))
+                l = l.replace('(', '')
+                l = l.replace(')', '')
+                if type == 'general':
+                    if i == 0 or i == 1:
+                        descs += l.lower().split(' ')
+                elif type == 'yn':
+                    if i == 2:
+                        descs += l.lower().split(' ')
+                elif type == 'present':
+                    if i == 3 or i == 5:
+                        descs += l.lower().split(' ')
+                elif type == 'past':
+                    if i == 4 or i == 6:
+                        descs += l.lower().split(' ')
+                elif type == 'future':
+                    if i == 7 or i == 8:
+                        descs += l.lower().split(' ')
+    return descs
 
 
-load_descs()
