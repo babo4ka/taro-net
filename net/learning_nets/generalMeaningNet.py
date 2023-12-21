@@ -1,88 +1,27 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-import matplotlib.pyplot as plt
-
-from net.cards_loader import load_descs
+from net.taro_nets_utils import generate_text
+from net.taro_nets_utils import get_batch
+from net.taro_nets_utils import get_indexed
+from net.taro_nets_utils import get_unique_words
+from net.taro_nets_utils import load_descs
+from net.taro_nets_utils import text_to_seq
 
 descs = load_descs('general', path='../../cards_descs')
 
-uniqueWords = []
+uniqueWords = get_unique_words(descs)
 
-for arr in descs:
-    for word in arr:
-        if not word in uniqueWords:
-            uniqueWords.append(word)
+indexes_to_words, words_to_indexes = get_indexed(uniqueWords)
 
-indexes_to_words = {}
-words_to_indexes = {}
-
-for i, word in enumerate(uniqueWords):
-    indexes_to_words[i] = word
-    words_to_indexes[word] = i
-
-
-def text_to_seq():
-    seq = []
-
-    for arr in descs:
-        temp = []
-        for word in arr:
-            temp.append(words_to_indexes[word])
-
-        seq.append(temp)
-
-    # for desc in descs:
-    #     seq.append(words_to_indexes[desc])
-
-    return seq
-
-
-sequence = text_to_seq()
+sequence = text_to_seq(descs, words_to_indexes)
 
 seq_len = 50
 batch_size = 16
 
-
-def get_batch(seq):
-    trains = []
-    targets = []
-
-    for _ in range(batch_size):
-        batch_start = np.random.randint(0, len(seq) - seq_len)
-        chunk = seq[batch_start: batch_start + seq_len]
-        train = torch.LongTensor(chunk[:-1]).view(-1, 1)
-        target = torch.LongTensor(chunk[1:]).view(-1, 1)
-        trains.append(train)
-        targets.append(target)
-    return torch.stack(trains, dim=0), torch.stack(targets, dim=0)
-
-
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-
-def generate_text(net, start_text='карта указывает', pred_len=200, temp=0.3):
-    hidden = net.init_hidden()
-    idx_inp = [words_to_indexes[str] for str in start_text.split(' ')]
-    train = torch.LongTensor(idx_inp).view(-1, 1, 1).to(device)
-    pred_text = start_text
-
-    _, hidden = net(train, hidden)
-
-    inp = train[-1].view(-1, 1, 1)
-
-    for i in range(pred_len):
-        output, hidden = net(inp.to(device), hidden)
-        output_logits = output.cpu().data.view(-1)
-        p_next = F.softmax(output_logits / temp, dim=-1).detach().cpu().data.numpy()
-        top_index = np.random.choice(len(words_to_indexes), p=p_next)
-        inp = torch.LongTensor([top_index]).view(-1, 1, 1).to(device)
-        pred_word = indexes_to_words[top_index]
-        pred_text = pred_text + " " + pred_word
-
-    return pred_text
 
 
 class TaroGenNet(nn.Module):
@@ -130,7 +69,7 @@ loss_history = []
 for epoch in range(epochs):
     for seq in sequence:
         net.train()
-        train, target = get_batch(seq)
+        train, target = get_batch(seq, batch_size, seq_len)
         train = train.permute(1, 0, 2).to(device)
         target = target.permute(1, 0, 2).to(device)
         hidden = net.init_hidden(batch_size)
@@ -145,15 +84,14 @@ for epoch in range(epochs):
         loss_history.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
-        if(len(loss_his) >= 50):
+        if (len(loss_his) >= 50):
             mean_loss = np.mean(loss_his)
             print('loss: ', mean_loss)
             scheduler.step(mean_loss)
             loss_his = []
             net.eval()
-            predicted_text = generate_text(net)
+            predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device)
             print(predicted_text)
-
 
 plt.plot(loss_history)
 plt.show()
