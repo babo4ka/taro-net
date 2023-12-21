@@ -5,15 +5,16 @@ import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
 
-from cards_loader import load_descs
+from net.cards_loader import load_descs
 
-descs = load_descs('general')
+descs = load_descs('general', path='../../cards_descs')
 
 uniqueWords = []
 
-for word in descs:
-    if not word in uniqueWords:
-        uniqueWords.append(word)
+for arr in descs:
+    for word in arr:
+        if not word in uniqueWords:
+            uniqueWords.append(word)
 
 indexes_to_words = {}
 words_to_indexes = {}
@@ -26,15 +27,22 @@ for i, word in enumerate(uniqueWords):
 def text_to_seq():
     seq = []
 
-    for desc in descs:
-        seq.append(words_to_indexes[desc])
+    for arr in descs:
+        temp = []
+        for word in arr:
+            temp.append(words_to_indexes[word])
+
+        seq.append(temp)
+
+    # for desc in descs:
+    #     seq.append(words_to_indexes[desc])
 
     return seq
 
 
 sequence = text_to_seq()
 
-seq_len = 256
+seq_len = 50
 batch_size = 16
 
 
@@ -115,35 +123,36 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     factor=0.5
 )
 
-epochs = 5000
+epochs = 100
 loss_his = []
 loss_history = []
 
 for epoch in range(epochs):
-    net.train()
-    train, target = get_batch(sequence)
-    train = train.permute(1, 0, 2).to(device)
-    target = target.permute(1, 0, 2).to(device)
-    hidden = net.init_hidden(batch_size)
+    for seq in sequence:
+        net.train()
+        train, target = get_batch(seq)
+        train = train.permute(1, 0, 2).to(device)
+        target = target.permute(1, 0, 2).to(device)
+        hidden = net.init_hidden(batch_size)
 
-    output, hidden = net(train, hidden)
-    loss = loss_fun(output.permute(1, 2, 0), target.squeeze(-1).permute(1, 0))
+        output, hidden = net(train, hidden)
+        loss = loss_fun(output.permute(1, 2, 0), target.squeeze(-1).permute(1, 0))
 
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
 
-    loss_history.append(loss.detach().cpu())
+        loss_history.append(loss.detach().cpu())
 
-    loss_his.append(loss.item())
-    if(len(loss_his) >= 50):
-        mean_loss = np.mean(loss_his)
-        print('loss: ', mean_loss)
-        scheduler.step(mean_loss)
-        loss_his = []
-        net.eval()
-        predicted_text = generate_text(net)
-        print(predicted_text)
+        loss_his.append(loss.item())
+        if(len(loss_his) >= 50):
+            mean_loss = np.mean(loss_his)
+            print('loss: ', mean_loss)
+            scheduler.step(mean_loss)
+            loss_his = []
+            net.eval()
+            predicted_text = generate_text(net)
+            print(predicted_text)
 
 
 plt.plot(loss_history)
