@@ -62,9 +62,11 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     factor=0.5
 )
 
-epochs = 100
+epochs = 5000
 loss_his = []
 loss_history = []
+
+temp_num = 1
 
 for epoch in range(epochs):
     for seq in sequence:
@@ -87,11 +89,26 @@ for epoch in range(epochs):
         if (len(loss_his) >= 50):
             mean_loss = np.mean(loss_his)
             print('loss: ', mean_loss)
+            print('epoch:', epoch)
             scheduler.step(mean_loss)
             loss_his = []
             net.eval()
             predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device)
             print(predicted_text)
 
+    if epoch % 100 == 0:
+        print('epoch:', epoch)
+
+        plt.plot(loss_history)
+        plt.show()
+
+        torch.save(net, ("../learned_nets/general_meaning/GeneralMeaningNet_temp_" + str(temp_num) + ".pt"))
+        temp_num += 1
+        print('1 - прекратить, любой символ или слово - продолжить')
+        action = input()
+        if action == '1':
+            break
+
+torch.save(net, "../learned_nets/general_meaning/GeneralMeaningNet.pt")
 plt.plot(loss_history)
 plt.show()
