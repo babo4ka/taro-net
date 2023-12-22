@@ -106,8 +106,7 @@ for epoch in range(epochs):
         plt.legend(loc='upper left')
         plt.show()
 
-        torch.save(net, ("../learned_nets/geneп"
-                         "ral_meaning/GeneralMeaningNet_temp_" + str(temp_num) + ".pt"))
+        torch.save(net, ("../learned_nets/general_meaning/GeneralMeaningNet_temp_" + str(temp_num) + ".pt"))
         temp_num += 1
 
         predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device, start_text='эта карта')
