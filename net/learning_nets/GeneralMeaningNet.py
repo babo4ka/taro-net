@@ -62,13 +62,14 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     factor=0.5
 )
 
-epochs = 5000
+epochs = 2500
 loss_his = []
 loss_history = []
 
 temp_num = 1
 
 for epoch in range(epochs):
+    ep_loss = []
     for seq in sequence:
         net.train()
         train, target = get_batch(seq, batch_size, seq_len)
@@ -83,7 +84,7 @@ for epoch in range(epochs):
         optimizer.step()
         optimizer.zero_grad()
 
-        loss_history.append(loss.detach().cpu())
+        ep_loss.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
         if (len(loss_his) >= 50):
@@ -93,22 +94,28 @@ for epoch in range(epochs):
             scheduler.step(mean_loss)
             loss_his = []
             net.eval()
-            predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device)
-            print(predicted_text)
+
+    loss_history.append(np.mean(ep_loss))
 
     if epoch % 100 == 0:
         print('epoch:', epoch)
 
-        plt.plot(loss_history)
+        plt.plot(loss_history, c='pink', label='потери сети общее')
+        plt.xlabel('эпохи')
+        plt.ylabel('потери')
+        plt.legend(loc='upper left')
         plt.show()
 
-        torch.save(net, ("../learned_nets/general_meaning/GeneralMeaningNet_temp_" + str(temp_num) + ".pt"))
+        torch.save(net, ("../learned_nets/geneп"
+                         "ral_meaning/GeneralMeaningNet_temp_" + str(temp_num) + ".pt"))
         temp_num += 1
+
+        predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device, start_text='эта карта')
+        print(predicted_text)
+
         print('1 - прекратить, любой символ или слово - продолжить')
         action = input()
         if action == '1':
             break
 
 torch.save(net, "../learned_nets/general_meaning/GeneralMeaningNet.pt")
-plt.plot(loss_history)
-plt.show()
