@@ -87,10 +87,6 @@ for epoch in range(epochs):
         optimizer.step()
         optimizer.zero_grad()
 
-        if epoch % 100 == 0:
-            gen_loss_history.append(loss.detach().cpu())
-            gen_loss_epochs.append(epoch)
-
         ep_loss.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
@@ -103,6 +99,10 @@ for epoch in range(epochs):
             net.eval()
 
     loss_history.append(np.mean(ep_loss))
+
+    if epoch % 100 == 0:
+        gen_loss_history.append(np.mean(ep_loss))
+        gen_loss_epochs.append(epoch)
 
     if epoch % 100 == 0:
         print('epoch:', epoch)
