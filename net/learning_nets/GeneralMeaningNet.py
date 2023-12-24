@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -66,6 +68,9 @@ epochs = 2500
 loss_his = []
 loss_history = []
 
+gen_loss_history = []
+gen_loss_epochs = []
+
 temp_num = 1
 
 for epoch in range(epochs):
@@ -87,20 +92,25 @@ for epoch in range(epochs):
         ep_loss.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
-        if (len(loss_his) >= 50):
-            mean_loss = np.mean(loss_his)
-            print('loss: ', mean_loss)
-            print('epoch:', epoch)
-            scheduler.step(mean_loss)
-            loss_his = []
-            net.eval()
+
+    if len(loss_his) >= 50:
+        mean_loss = np.mean(loss_his)
+        print('loss: ', mean_loss)
+        print('epoch:', epoch)
+        scheduler.step(mean_loss)
+        loss_his = []
+        net.eval()
 
     loss_history.append(np.mean(ep_loss))
 
-    if epoch % 100 == 0:
+    if epoch % 100 == 0 and epoch != 0:
         print('epoch:', epoch)
 
-        plt.plot(loss_history, c='pink', label='потери сети общее')
+        gen_loss_history.append(np.mean(ep_loss))
+        gen_loss_epochs.append(epoch)
+
+        plt.plot(loss_history, c='black', label='потери сети общее')
+        plt.plot(gen_loss_epochs, gen_loss_history, marker='.', c='pink', label='потери на поколении')
         plt.xlabel('эпохи')
         plt.ylabel('потери')
         plt.legend(loc='upper left')
@@ -114,7 +124,13 @@ for epoch in range(epochs):
 
         print('1 - прекратить, любой символ или слово - продолжить')
         action = input()
-        if action == '1':
-            break
 
-torch.save(net, "../learned_nets/general_meaning/GeneralMeaningNet.pt")
+        if action == '1':
+            minimal_loss = np.min(gen_loss_history)
+            index = gen_loss_history.index(minimal_loss)
+            best_epoch = gen_loss_epochs[index]
+            nums_to_delete = [int(num/100) for num in gen_loss_epochs if num != best_epoch]
+
+            for i in nums_to_delete:
+                os.remove("../learned_nets/general_meaning/GeneralMeaningNet_temp_" + str(i) + ".pt")
+            break
