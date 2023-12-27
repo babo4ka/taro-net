@@ -56,7 +56,7 @@ net = TaroGenNet(input_size=len(indexes_to_words), hidden_size=128, embedding_si
 net.to(device)
 
 loss_fun = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(net.parameters(), lr=0.01, amsgrad=True)
+optimizer = torch.optim.RMSprop(net.parameters(), lr=0.01)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer,
     patience=5,
@@ -130,6 +130,8 @@ for epoch in range(epochs):
             index = gen_loss_history.index(minimal_loss)
             best_epoch = gen_loss_epochs[index]
             nums_to_delete = [int(num/100) for num in gen_loss_epochs if num != best_epoch]
+
+            print('saving gen ', best_epoch, ' with loss = ', minimal_loss)
 
             for i in nums_to_delete:
                 os.remove("../learned_nets/general_meaning/GeneralMeaningNet_temp_" + str(i) + ".pt")
