@@ -1,7 +1,9 @@
+import math
 import os
 import torch
 import numpy as np
 import torch.nn.functional as F
+
 
 def load_descs(type, path="../cards_descs"):
     descs = []
@@ -74,9 +76,11 @@ def text_to_seq(text, words_to_indexes):
     return seq
 
 
-def get_batch(seq, batch_size, seq_len):
+def get_batch(seq, batch_size):
     trains = []
     targets = []
+
+    seq_len = math.floor(len(seq) * 0.7)
 
     for _ in range(batch_size):
         batch_start = np.random.randint(0, len(seq) - seq_len)

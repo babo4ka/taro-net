@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -17,9 +19,6 @@ uniqueWords = get_unique_words(descs)
 indexes_to_words, words_to_indexes = get_indexed(uniqueWords)
 
 sequence = text_to_seq(descs, words_to_indexes)
-
-seq_len = 7
-batch_size = 16
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -53,7 +52,7 @@ net = YNNet(input_size=len(indexes_to_words), hidden_size=128, embedding_size=12
 net.to(device)
 
 loss_fun = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(net.parameters(), lr=0.01, amsgrad=True)
+optimizer = torch.optim.RMSprop(net.parameters(), lr=0.01)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     optimizer,
     patience=5,
@@ -65,13 +64,18 @@ epochs = 2500
 loss_his = []
 loss_history = []
 
+gen_loss_history = []
+gen_loss_epochs = []
+
 temp_num = 1
+
+batch_size = 16
 
 for epoch in range(epochs):
     ep_loss = []
     for seq in sequence:
         net.train()
-        train, target = get_batch(seq, batch_size, seq_len)
+        train, target = get_batch(seq, batch_size)
         train = train.permute(1, 0, 2).to(device)
         target = target.permute(1, 0, 2).to(device)
         hidden = net.init_hidden(batch_size)
@@ -86,7 +90,7 @@ for epoch in range(epochs):
         ep_loss.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
-        if (len(loss_his) >= 50):
+        if len(loss_his) >= 50:
             mean_loss = np.mean(loss_his)
             print('loss: ', mean_loss)
             print('epoch:', epoch)
@@ -94,12 +98,17 @@ for epoch in range(epochs):
             loss_his = []
             net.eval()
 
-    loss_history.append(np.mean(ep_loss))
+    avg_ep_loss = np.mean(ep_loss)
+    loss_history.append(avg_ep_loss)
 
-    if epoch % 100 == 0:
+    if epoch % 100 == 0 and epoch != 0:
         print('epoch:', epoch)
 
-        plt.plot(loss_history, c='pink', label='потери сети да/нет')
+        gen_loss_history.append(avg_ep_loss)
+        gen_loss_epochs.append(epoch)
+
+        plt.plot(loss_history, c='black', label='потери сети да/нет')
+        plt.plot(gen_loss_epochs, gen_loss_history, marker='.', c='pink', label='потери на поколении')
         plt.xlabel('эпохи')
         plt.ylabel('потери')
         plt.legend(loc='upper left')
@@ -114,8 +123,14 @@ for epoch in range(epochs):
         print('1 - прекратить, любой символ или слово - продолжить')
         action = input()
         if action == '1':
+            minimal_loss = np.min(gen_loss_history)
+            index = gen_loss_history.index(minimal_loss)
+            best_epoch = gen_loss_epochs[index]
+            nums_to_delete = [int(num / 100) for num in gen_loss_epochs if num != best_epoch]
+
+            print('saving gen ', best_epoch, ' with loss = ', minimal_loss)
+
+            for i in nums_to_delete:
+                os.remove("../learned_nets/yes_no/YNNet_temp_" + str(i) + ".pt")
             break
-
-torch.save(net, "../learned_nets/yes_no/YNNet.pt")
-
 
