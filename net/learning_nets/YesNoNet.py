@@ -133,4 +133,3 @@ for epoch in range(epochs):
             for i in nums_to_delete:
                 os.remove("../learned_nets/yes_no/YNNet_temp_" + str(i) + ".pt")
             break
-

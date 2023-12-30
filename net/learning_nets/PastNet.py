@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -17,9 +19,6 @@ uniqueWords = get_unique_words(descs)
 indexes_to_words, words_to_indexes = get_indexed(uniqueWords)
 
 sequence = text_to_seq(descs, words_to_indexes)
-
-seq_len = 25
-batch_size = 16
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -50,7 +49,7 @@ class PastNet(nn.Module):
                 torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True).to(device))
 
 
-net = PastNet(input_size=len(indexes_to_words), hidden_size=128, embedding_size=256, n_layers=3)
+net = PastNet(input_size=len(indexes_to_words), hidden_size=128, embedding_size=128, n_layers=2)
 net.to(device)
 
 loss_fun = nn.CrossEntropyLoss()
@@ -66,13 +65,18 @@ epochs = 2500
 loss_his = []
 loss_history = []
 
+gen_loss_history = []
+gen_loss_epochs = []
+
 temp_num = 1
+
+batch_size = 32
 
 for epoch in range(epochs):
     ep_loss = []
     for seq in sequence:
         net.train()
-        train, target = get_batch(seq, batch_size, seq_len)
+        train, target = get_batch(seq, batch_size)
         train = train.permute(1, 0, 2).to(device)
         target = target.permute(1, 0, 2).to(device)
         hidden = net.init_hidden(batch_size)
@@ -87,21 +91,26 @@ for epoch in range(epochs):
         ep_loss.append(loss.detach().cpu())
 
         loss_his.append(loss.item())
-        if (len(loss_his) >= 50):
-            mean_loss = np.mean(loss_his)
-            print('loss: ', mean_loss)
-            print('epoch:', epoch)
-            scheduler.step(mean_loss)
-            loss_his = []
-            net.eval()
 
-    loss_history.append(np.mean(ep_loss))
+    if len(loss_his) >= 50:
+        mean_loss = np.mean(loss_his)
+        print('loss: ', mean_loss)
+        print('epoch:', epoch)
+        scheduler.step(mean_loss)
+        loss_his = []
+        net.eval()
 
-    if epoch % 100 == 0:
+    avg_ep_loss = np.mean(ep_loss)
+    loss_history.append(avg_ep_loss)
+
+    if epoch % 100 == 0 and epoch != 0:
         print('epoch:', epoch)
 
+        gen_loss_history.append(avg_ep_loss)
+        gen_loss_epochs.append(epoch)
 
-        plt.plot(loss_history, c='pink', label='потери сети прошлого')
+        plt.plot(loss_history, c='black', label='потери сети прошлого')
+        plt.plot(gen_loss_epochs, gen_loss_history, marker='.', c='pink', label='потери на поколении')
         plt.xlabel('эпохи')
         plt.ylabel('потери')
         plt.legend(loc='upper left')
@@ -116,6 +125,13 @@ for epoch in range(epochs):
         print('1 - прекратить, любой символ или слово - продолжить')
         action = input()
         if action == '1':
-            break
+            minimal_loss = np.min(gen_loss_history)
+            index = gen_loss_history.index(minimal_loss)
+            best_epoch = gen_loss_epochs[index]
+            nums_to_delete = [int(num / 100) for num in gen_loss_epochs if num != best_epoch]
 
-torch.save(net, "../learned_nets/past/PastNet.pt")
+            print('saving gen ', best_epoch, ' with loss = ', minimal_loss)
+
+            for i in nums_to_delete:
+                os.remove("../learned_nets/past/PastNet_temp_" + str(i) + ".pt")
+            break
