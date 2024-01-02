@@ -3,12 +3,13 @@ import torch
 from net.taro_nets_utils import generate_text, load_descs, get_unique_words, get_indexed
 
 
-class GeneralMeaning:
-    def __init__(self):
-        self.net = torch.load('/GeneralMeaningNet_temp_3.pt')
+class LearnedNet:
+    def __init__(self, path_to_net, type):
+
+        self.net = torch.load(path_to_net)
         self.net.eval()
 
-        self.descs = load_descs('general', path='../../cards_descs')
+        self.descs = load_descs(type, path='../../cards_descs')
 
         self.uniqueWords = get_unique_words(self.descs)
 

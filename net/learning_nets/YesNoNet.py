@@ -12,15 +12,6 @@ from net.taro_nets_utils import get_unique_words
 from net.taro_nets_utils import load_descs
 from net.taro_nets_utils import text_to_seq
 
-descs = load_descs('yn', path='../../cards_descs')
-
-uniqueWords = get_unique_words(descs)
-
-indexes_to_words, words_to_indexes = get_indexed(uniqueWords)
-
-sequence = text_to_seq(descs, words_to_indexes)
-
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class YNNet(nn.Module):
     def __init__(self, input_size, hidden_size, embedding_size, n_layers=1):
@@ -48,88 +39,99 @@ class YNNet(nn.Module):
                 torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True).to(device))
 
 
-net = YNNet(input_size=len(indexes_to_words), hidden_size=128, embedding_size=128, n_layers=4)
-net.to(device)
+if __name__ == '__main__':
+    descs = load_descs('yn', path='../../cards_descs')
 
-loss_fun = nn.CrossEntropyLoss()
-optimizer = torch.optim.RMSprop(net.parameters(), lr=0.01)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer,
-    patience=5,
-    verbose=True,
-    factor=0.5
-)
+    uniqueWords = get_unique_words(descs)
 
-epochs = 2500
-loss_his = []
-loss_history = []
+    indexes_to_words, words_to_indexes = get_indexed(uniqueWords)
 
-gen_loss_history = []
-gen_loss_epochs = []
+    sequence = text_to_seq(descs, words_to_indexes)
 
-temp_num = 1
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-batch_size = 16
+    net = YNNet(input_size=len(indexes_to_words), hidden_size=128, embedding_size=128, n_layers=4)
+    net.to(device)
 
-for epoch in range(epochs):
-    ep_loss = []
-    for seq in sequence:
-        net.train()
-        train, target = get_batch(seq, batch_size)
-        train = train.permute(1, 0, 2).to(device)
-        target = target.permute(1, 0, 2).to(device)
-        hidden = net.init_hidden(batch_size)
+    loss_fun = nn.CrossEntropyLoss()
+    optimizer = torch.optim.RMSprop(net.parameters(), lr=0.01)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        patience=5,
+        verbose=True,
+        factor=0.5
+    )
 
-        output, hidden = net(train, hidden)
-        loss = loss_fun(output.permute(1, 2, 0), target.squeeze(-1).permute(1, 0))
+    epochs = 2500
+    loss_his = []
+    loss_history = []
 
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
+    gen_loss_history = []
+    gen_loss_epochs = []
 
-        ep_loss.append(loss.detach().cpu())
+    temp_num = 1
 
-        loss_his.append(loss.item())
-        if len(loss_his) >= 50:
-            mean_loss = np.mean(loss_his)
-            print('loss: ', mean_loss)
+    batch_size = 16
+
+    for epoch in range(epochs):
+        ep_loss = []
+        for seq in sequence:
+            net.train()
+            train, target = get_batch(seq, batch_size)
+            train = train.permute(1, 0, 2).to(device)
+            target = target.permute(1, 0, 2).to(device)
+            hidden = net.init_hidden(batch_size)
+
+            output, hidden = net(train, hidden)
+            loss = loss_fun(output.permute(1, 2, 0), target.squeeze(-1).permute(1, 0))
+
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+
+            ep_loss.append(loss.detach().cpu())
+
+            loss_his.append(loss.item())
+            if len(loss_his) >= 50:
+                mean_loss = np.mean(loss_his)
+                print('loss: ', mean_loss)
+                print('epoch:', epoch)
+                scheduler.step(mean_loss)
+                loss_his = []
+                net.eval()
+
+        avg_ep_loss = np.mean(ep_loss)
+        loss_history.append(avg_ep_loss)
+
+        if epoch % 100 == 0 and epoch != 0:
             print('epoch:', epoch)
-            scheduler.step(mean_loss)
-            loss_his = []
-            net.eval()
 
-    avg_ep_loss = np.mean(ep_loss)
-    loss_history.append(avg_ep_loss)
+            gen_loss_history.append(avg_ep_loss)
+            gen_loss_epochs.append(epoch)
 
-    if epoch % 100 == 0 and epoch != 0:
-        print('epoch:', epoch)
+            plt.plot(loss_history, c='black', label='потери сети да/нет')
+            plt.plot(gen_loss_epochs, gen_loss_history, marker='.', c='pink', label='потери на поколении')
+            plt.xlabel('эпохи')
+            plt.ylabel('потери')
+            plt.legend(loc='upper left')
+            plt.show()
 
-        gen_loss_history.append(avg_ep_loss)
-        gen_loss_epochs.append(epoch)
+            torch.save(net, ("../learned_nets/yes_no/YNNet_temp_" + str(temp_num) + ".pt"))
+            temp_num += 1
 
-        plt.plot(loss_history, c='black', label='потери сети да/нет')
-        plt.plot(gen_loss_epochs, gen_loss_history, marker='.', c='pink', label='потери на поколении')
-        plt.xlabel('эпохи')
-        plt.ylabel('потери')
-        plt.legend(loc='upper left')
-        plt.show()
+            predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device, start_text='эта карта')
+            print(predicted_text)
 
-        torch.save(net, ("../learned_nets/yes_no/YNNet_temp_" + str(temp_num) + ".pt"))
-        temp_num += 1
+            print('1 - прекратить, любой символ или слово - продолжить')
+            action = input()
+            if action == '1':
+                minimal_loss = np.min(gen_loss_history)
+                index = gen_loss_history.index(minimal_loss)
+                best_epoch = gen_loss_epochs[index]
+                nums_to_delete = [int(num / 100) for num in gen_loss_epochs if num != best_epoch]
 
-        predicted_text = generate_text(net, words_to_indexes, indexes_to_words, device, start_text='эта карта')
-        print(predicted_text)
+                print('saving gen ', best_epoch, ' with loss = ', minimal_loss)
 
-        print('1 - прекратить, любой символ или слово - продолжить')
-        action = input()
-        if action == '1':
-            minimal_loss = np.min(gen_loss_history)
-            index = gen_loss_history.index(minimal_loss)
-            best_epoch = gen_loss_epochs[index]
-            nums_to_delete = [int(num / 100) for num in gen_loss_epochs if num != best_epoch]
-
-            print('saving gen ', best_epoch, ' with loss = ', minimal_loss)
-
-            for i in nums_to_delete:
-                os.remove("../learned_nets/yes_no/YNNet_temp_" + str(i) + ".pt")
-            break
+                for i in nums_to_delete:
+                    os.remove("../learned_nets/yes_no/YNNet_temp_" + str(i) + ".pt")
+                break
