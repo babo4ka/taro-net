@@ -1,5 +1,7 @@
-from LearnedNet import LearnedNet
+import datetime
 import socket
+
+from LearnedNet import LearnedNet
 
 from net.learning_nets.GeneralMeaningNet import TaroGenNet
 from net.learning_nets.PastNet import PastNet
@@ -20,6 +22,12 @@ PAN = 3
 PRN = 4
 FN = 5
 
+general_path = '../../../generated_texts/general/'
+yn_path = '../../../generated_texts/yn/'
+past_path = '../../../generated_texts/past/'
+present_path = '../../../generated_texts/present/'
+future_path = '../../../generated_texts/future/'
+
 HOST = ('localhost', 9998)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,15 +46,39 @@ while True:
         type = int(data.decode())
         if type == GN:
             text = general_net.get_text(txt_len=25, temp=0.4)
+            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
+            file = open((general_path + fileName), 'w+')
+            file.write(text)
+            file.close()
         elif type == YN:
             text = yn_net.get_text(txt_len=25, temp=0.3)
+            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
+                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
+            file = open((yn_path + fileName), 'w+')
+            file.write(text)
+            file.close()
         elif type == PAN:
-            text = past_net.get_text()
+            text = past_net.get_text(start_text='в гaдaнии')
+            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
+                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
+            file = open((past_path + fileName), 'w+')
+            file.write(text)
+            file.close()
         elif type == PRN:
-            text = present_net.get_text(txt_len=30)
+            text = present_net.get_text(txt_len=30, start_text='пpи гaдaнии')
+            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
+                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
+            file = open((present_path + fileName), 'w+')
+            file.write(text)
+            file.close()
         elif type == FN:
-            future_net.get_text()
+            text = future_net.get_text(start_text='пpи гaдaнии')
+            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
+                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
+            file = open((future_path + fileName), 'w+')
+            file.write(text)
+            file.close()
 
-        print(text)
+        conn.send(fileName.encode())
 
     conn.close()

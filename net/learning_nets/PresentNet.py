@@ -35,8 +35,8 @@ class PresentNet(nn.Module):
         return x, (ht1, ct1)
 
     def init_hidden(self, batch_size=1):
-        return (torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True).to(device),
-                torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True).to(device))
+        return (torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True),
+                torch.zeros(self.n_layers, batch_size, self.hidden_size, requires_grad=True))
 
 
 if __name__ == '__main__':
