@@ -94,8 +94,12 @@ def get_batch(seq, batch_size):
 
 def generate_text(net, words_to_indexes, indexes_to_words, device, start_text='карта указывает', pred_len=50, temp=0.3):
     hidden = net.init_hidden()
-    hidden[0].to(device)
-    hidden[1].to(device)
+    hidden2 = []
+    for h in hidden:
+        hidden2.append(h.to(device))
+
+    hidden = (hidden2[0], hidden2[1])
+
     idx_inp = [words_to_indexes[str] for str in start_text.split(' ')]
     train = torch.LongTensor(idx_inp).view(-1, 1, 1).to(device)
     pred_text = start_text
