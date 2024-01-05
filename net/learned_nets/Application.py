@@ -46,39 +46,15 @@ while True:
         type = int(data.decode())
         if type == GN:
             text = general_net.get_text(txt_len=25, temp=0.4)
-            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
-            file = open((general_path + fileName), 'w+')
-            file.write(text)
-            file.close()
         elif type == YN:
             text = yn_net.get_text(txt_len=25, temp=0.3)
-            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
-                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
-            file = open((yn_path + fileName), 'w+')
-            file.write(text)
-            file.close()
         elif type == PAN:
             text = past_net.get_text(start_text='в гaдaнии')
-            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
-                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
-            file = open((past_path + fileName), 'w+')
-            file.write(text)
-            file.close()
         elif type == PRN:
             text = present_net.get_text(txt_len=30, start_text='пpи гaдaнии')
-            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
-                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
-            file = open((present_path + fileName), 'w+')
-            file.write(text)
-            file.close()
         elif type == FN:
             text = future_net.get_text(start_text='пpи гaдaнии')
-            fileName = (str(datetime.date.today()) + '_' + str(datetime.datetime.now().time().hour) + '_' + str(
-                datetime.datetime.now().time().minute) + '_' + str(datetime.datetime.now().time().second)) + '.txt'
-            file = open((future_path + fileName), 'w+')
-            file.write(text)
-            file.close()
 
-        conn.send(fileName.encode())
+        conn.send(text.encode())
 
     conn.close()
