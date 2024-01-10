@@ -43,17 +43,20 @@ while True:
     data = conn.recv(2048)
 
     if data:
-        type = int(data.decode())
+        splitted_data = data.decode().split("-")
+        print(splitted_data)
+        type = int(splitted_data[0])
+        txt_len = int(splitted_data[1])
         if type == GN:
-            text = general_net.get_text(txt_len=25, temp=0.4)
+            text = general_net.get_text(txt_len=txt_len, temp=0.4)
         elif type == YN:
-            text = yn_net.get_text(txt_len=25, temp=0.3)
+            text = yn_net.get_text(txt_len=txt_len, temp=0.3)
         elif type == PAN:
-            text = past_net.get_text(start_text='в гaдaнии')
+            text = past_net.get_text(start_text='в гaдaнии', txt_len=txt_len)
         elif type == PRN:
-            text = present_net.get_text(txt_len=30, start_text='пpи гaдaнии')
+            text = present_net.get_text(txt_len=txt_len, start_text='пpи гaдaнии')
         elif type == FN:
-            text = future_net.get_text(start_text='пpи гaдaнии')
+            text = future_net.get_text(txt_len=txt_len, start_text='пpи гaдaнии')
 
         conn.send(text.encode())
 
